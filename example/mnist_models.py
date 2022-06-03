@@ -66,24 +66,50 @@ def conv() -> proto.LayerModel:
 def res() -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
     layer_graph.add_layer((1, 28, 28), 2, LayerType.CND, 'i')
-    layer_graph.add_layer((1, 13, 13), 7, LayerType.HID, 'c1')
-    layer_graph.add_layer((1, 5, 5), 17, LayerType.HID, 'c2')
+    layer_graph.add_layer((1, 24, 24), 7, LayerType.HID, 'r1c1')
+    layer_graph.add_layer((1, 11, 11), 7, LayerType.HID, 'r1c2')
+    layer_graph.add_layer((1, 28, 28), 2, LayerType.HID, 'sh1')
+    layer_graph.add_layer((1, 24, 24), 7, LayerType.HID, 'sh1c1')
+    layer_graph.add_layer((1, 11, 11), 7, LayerType.HID, 'sh1c2')
+    layer_graph.add_layer((1, 28, 28), 2, LayerType.HID, 'shsh1')
+    layer_graph.add_layer((1, 7, 7), 17, LayerType.HID, 'r2c1')
+    layer_graph.add_layer((1, 3, 3), 17, LayerType.HID, 'r2c2')
+    layer_graph.add_layer((1, 11, 11), 7, LayerType.HID, 'sh2')
     layer_graph.add_layer(10, 11, LayerType.HID, 'd')
-    layer_graph.add_layer((1, 28, 28), 2, LayerType.HID, 'csh')
     layer_graph.add_layer(1, NB_CLASS, LayerType.HID, 'o')
     layer_graph.connect_layers(
-            ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(5, 5),
+            ['i', 'r1c1'], ConnectionType.CONV, 'r1c1', kernel_shape=(5, 5),
+            stride=(1, 1), doubleoffset=(4, 4))
+    layer_graph.connect_layers(
+            ['r1c1', 'r1c2'], ConnectionType.CONV, 'r1c2', kernel_shape=(5, 5),
             stride=(2, 2), doubleoffset=(4, 4))
     layer_graph.connect_layers(
-            ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(5, 5),
-            stride=(2, 2), doubleoffset=(4, 4))
-    layer_graph.connect_layers(
-            ['i', 'csh'], ConnectionType.CONV, 'csh', kernel_shape=(1, 1),
+            ['i', 'sh1'], ConnectionType.LOCAL, 'sh1', kernel_shape=(1, 1),
             stride=(1, 1), doubleoffset=(0, 0))
-    #layer_graph.connect_layers(['i', 'sh'], ConnectionType.DENSE, 'ish') 
-    layer_graph.connect_layers(['c2', 'd'], ConnectionType.DENSE, 'cd')
+    layer_graph.connect_layers(
+            ['r1c2', 'r2c1'], ConnectionType.CONV, 'r2c1', kernel_shape=(5, 5),
+            stride=(1, 1), doubleoffset=(4, 4))
+    layer_graph.connect_layers(
+            ['sh1', 'sh1c1'], ConnectionType.CONV, 'sh1c1', kernel_shape=(5, 5),
+            stride=(1, 1), doubleoffset=(4, 4))
+    layer_graph.connect_layers(
+            ['sh1c1', 'sh1c2'], ConnectionType.CONV, 'sh1c2', kernel_shape=(5, 5),
+            stride=(2, 2), doubleoffset=(4, 4))  
+    layer_graph.connect_layers(
+            ['sh1', 'shsh1'], ConnectionType.LOCAL, 'shsh1', kernel_shape=(1, 1),
+            stride=(1, 1), doubleoffset=(0, 0))             
+    layer_graph.connect_layers(
+            ['r2c1', 'r2c2'], ConnectionType.CONV, 'r2c2', kernel_shape=(5, 5),
+            stride=(2, 2), doubleoffset=(4, 4))
+    layer_graph.connect_layers(
+            ['r1c2', 'sh2'], ConnectionType.LOCAL, 'sh2', kernel_shape=(1, 1),
+            stride=(1, 1), doubleoffset=(0, 0))
+    layer_graph.connect_layers(['r2c2', 'd'], ConnectionType.DENSE, 'cd')
+    layer_graph.connect_layers(['sh2', 'd'], ConnectionType.DENSE, 'shd')
+    layer_graph.connect_layers(['sh1c2', 'd'], ConnectionType.DENSE, 'shc')
+    layer_graph.connect_layers(['shsh1', 'd'], ConnectionType.DENSE, 'shs')
     layer_graph.connect_layers(['d', 'o'], ConnectionType.DENSE, 'do')
-    layer_graph.connect_layers(['csh', 'o'], ConnectionType.DENSE, 'sho')
+
 
     return layer_graph
 

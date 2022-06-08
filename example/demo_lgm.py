@@ -33,6 +33,7 @@ import os
 import argparse
 from typing import Optional, Tuple
 import torch.nn.functional as nnf
+import torchvision.transforms.functional as trf
 import torch.optim as optim
 import lgm.msgpass as msgpass
 from lgm.utils.common import (get_timestamp, Log, check_cuda, mkdirp,
@@ -41,6 +42,8 @@ from lgm.utils.common import (get_timestamp, Log, check_cuda, mkdirp,
 from lgm.utils.train import (train_epoch, eval_epoch, test)
 from lgm.utils.data.mnist import get_MNIST_dataloaders, AVAILABLE_FLAVORS
 import mnist_models
+from torch import nn
+import numpy as np
 
 
 def get_args():
@@ -86,6 +89,20 @@ def get_args():
                              ' --epoch is specified.')
     return parser.parse_args()
 
+def flattened_crop(input):
+    if input.ndimension() == 2:
+        edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8))
+    else:
+        edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8), input.size(2))
+
+    cropped = edited.clone()[:,2:-2,2:-2]
+
+    if input.ndimension() == 2:
+        reshaped = cropped.reshape(cropped.size(0), cropped.size(1)**2, 1)
+    else:
+        reshaped = cropped.reshape(cropped.size(0), cropped.size(1)**2, cropped.size(3))
+
+    return reshaped
 
 if __name__ == '__main__':
 
@@ -172,24 +189,83 @@ if __name__ == '__main__':
 
     # load the model and optimizer
 
-    if resume_from is None or not os.path.exists(resume_from):
-        print('initializing model ...')
-        # set up model
-        layer_graph = getattr(mnist_models, proto_name)()
-        msg_model = msgpass.layerModelWrapper(
-          layer_graph, 'step', 'pro', infer_method, frequency, ('o',))
-        if use_cuda:
-            msg_model.cuda()
-        # set up optimizer
-        optimizer = optim.__dict__[optim_type](msg_model.parameters(),
-                                               **optim_kwargs)
-    else:
-        print('Resume training from {0} ...'.format(resume_from))
-        msg_model, optimizer = training_resume(resume_from, use_cuda,
-                                               msgpass.loadWrapper)
-    msg_model.show_summary()
-    display_param_stats(msg_model)
+    # if resume_from is None or not os.path.exists(resume_from):
+    #     print('initializing model ...')
+    #     # set up model
+    #     layer_graph = getattr(mnist_models, proto_name)()
+    #     msg_model = msgpass.layerModelWrapper(
+    #       layer_graph, 'step', 'pro', infer_method, frequency, ('o',))
+    #     if use_cuda:
+    #         msg_model.cuda()
+    #     # set up optimizer
+    #     optimizer = optim.__dict__[optim_type](msg_model.parameters(),
+    #                                            **optim_kwargs)
+    # else:
+    #     print('Resume training from {0} ...'.format(resume_from))
+    #     msg_model, optimizer = training_resume(resume_from, use_cuda,
+    #                                            msgpass.loadWrapper)
+    # msg_model.show_summary()
+    # display_param_stats(msg_model)
 
+
+    layer_graph = getattr(mnist_models, 'res1')()
+    block1 = msgpass.layerModelWrapper(
+        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
+    if use_cuda:
+        block1.cuda()
+
+    layer_graph = getattr(mnist_models, 'res2')()
+    block2 = msgpass.layerModelWrapper(
+        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
+    if use_cuda:
+        block2.cuda()
+
+    layer_graph = getattr(mnist_models, 'res3')()
+    block3 = msgpass.layerModelWrapper(
+        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
+    if use_cuda:
+        block3.cuda()
+
+    layer_graph = getattr(mnist_models, 'res4')()
+    block4 = msgpass.layerModelWrapper(
+        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
+    if use_cuda:
+        block4.cuda()            
+
+    layer_graph = getattr(mnist_models, 'densify')()
+    dense = msgpass.layerModelWrapper(
+        layer_graph, 'step', 'pro', infer_method, frequency, ('o',))
+    if use_cuda:
+        dense.cuda()    
+
+    class ResModel(nn.Module):
+        def __init__(self, block1, block2, block3, block4, dense):
+            super(ResModel, self).__init__()
+            self.block1 = block1
+            self.block2 = block2
+            self.block3 = block3
+            self.block4 = block4
+            self.dense = dense
+            self.relu = nn.ReLU()
+
+        def forward(self, input):
+            hidden = self.block1(input)[0][:,:,1:]
+            res_out = self.relu(flattened_crop(input)+hidden)
+            hidden = self.block2(res_out)[0][:,:,1:]
+            res_out = self.relu(flattened_crop(res_out)+hidden)
+            hidden = self.block3(res_out)[0][:,:,1:]
+            res_out = self.relu(flattened_crop(res_out)+hidden)
+            hidden = self.block4(res_out)[0][:,:,1:]
+            res_out = self.relu(flattened_crop(res_out)+hidden)
+            o = self.dense(res_out)
+            return o
+
+
+
+    msg_model = ResModel(block1, block2, block3, block4, dense)
+
+    optimizer = optim.__dict__[optim_type](msg_model.parameters(),
+                                               **optim_kwargs)
     # training part
 
     def update_backup(backup: Optional[str], i: int, time_stamp: str) -> str:

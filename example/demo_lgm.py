@@ -31,7 +31,7 @@ test script for learning with MNIST / KMNIST / FashionMNIST
 """
 import os
 import argparse
-from typing import Optional, Tuple
+from typing import Dict, Tuple, Optional, Hashable
 import torch.nn.functional as nnf
 import torchvision.transforms.functional as trf
 import torch.optim as optim
@@ -44,6 +44,9 @@ from lgm.utils.data.mnist import get_MNIST_dataloaders, AVAILABLE_FLAVORS
 import mnist_models
 from torch import nn
 import numpy as np
+import torch
+from lgm.utils.common import Picklable, flip_local, get_local_links, SavableModel
+
 
 
 def get_args():
@@ -238,7 +241,7 @@ if __name__ == '__main__':
     if use_cuda:
         dense.cuda()    
 
-    class ResModel(nn.Module):
+    class ResModel(nn.Module, SavableModel):
         def __init__(self, block1, block2, block3, block4, dense):
             super(ResModel, self).__init__()
             self.block1 = block1
@@ -259,6 +262,28 @@ if __name__ == '__main__':
             res_out = self.relu(flattened_crop(res_out)+hidden)
             o = self.dense(res_out)
             return o
+
+        def save_model(self, path: str,
+                   addons: Optional[Dict[Hashable, Picklable]] = None) -> None:
+            if addons is None:
+                addons = {}
+            dic = {'proto': self.proto,
+                'state_dict': self.state_dict(),
+                **addons}
+            torch.save(dic, path)  
+            
+        @classmethod
+        def load_model(cls, path: str
+                    ) -> ('LayerModel', Dict[Hashable, Picklable]):
+            dic = torch.load(path)
+            protocol = dic['proto']
+            state_dict = dic['state_dict']
+            model = cls(protocol)
+            if state_dict:
+                model.load_state_dict(state_dict)
+            del dic['proto']
+            del dic['state_dict']
+            return model, dic
 
 
 

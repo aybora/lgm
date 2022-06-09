@@ -97,6 +97,7 @@ def flattened_crop(input, kernel_size=3, stride=3, padding=0):
         edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8))
     else:
         edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8), input.size(2))
+        edited = edited.permute(0,3,1,2)
 
     #cropped = edited.clone()[:,2:-2,2:-2]
     
@@ -105,6 +106,7 @@ def flattened_crop(input, kernel_size=3, stride=3, padding=0):
     if input.ndimension() == 2:
         reshaped = cropped.reshape(cropped.size(0), cropped.size(1)**2, 1)
     else:
+        cropped = cropped.permute(0,2,3,1)
         reshaped = cropped.reshape(cropped.size(0), cropped.size(1)**2, cropped.size(3))
 
     return reshaped
@@ -263,7 +265,7 @@ if __name__ == '__main__':
             hidden = self.block1(input) #[0][:,:,1:]
             res_out = hidden[0] + flattened_crop(input, kernel_size=3, stride=3)
             hidden = self.block2(res_out)
-            res_out = hidden[0] + flattened_crop(res_out[0], kernel_size=3, stride=2, padding=1)
+            res_out = hidden[0] + flattened_crop(res_out, kernel_size=3, stride=2, padding=1)
             # res_out = flattened_crop(res_out)+hidden
             # hidden = self.block3(res_out)[0][:,:,1:]
             # res_out = flattened_crop(res_out)+hidden

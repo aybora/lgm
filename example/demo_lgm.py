@@ -258,14 +258,14 @@ if __name__ == '__main__':
             self.block3 = block3
             self.block4 = block4
             self.dense = dense
-            # self.relu = nn.ReLU()
+            self.relu = nn.ReLU()
             # self.conv = conv
 
         def forward(self, input):
             hidden = self.block1(input) #[0][:,:,1:]
-            res_out = hidden[0] + flattened_crop(input, kernel_size=3, stride=3)
+            res_out = self.relu(hidden[0] + flattened_crop(input, kernel_size=3, stride=3))
             hidden = self.block2(res_out)
-            res_out = hidden[0] + flattened_crop(res_out, kernel_size=3, stride=2, padding=1)
+            res_out = self.relu(hidden[0] + flattened_crop(res_out, kernel_size=3, stride=2, padding=1))
             # res_out = flattened_crop(res_out)+hidden
             # hidden = self.block3(res_out)[0][:,:,1:]
             # res_out = flattened_crop(res_out)+hidden
@@ -299,6 +299,9 @@ if __name__ == '__main__':
 
 
     msg_model = ResModel(block1, block2, block3, block4, dense)
+
+    if use_cuda:
+        msg_model = msg_model.cuda()
 
     optimizer = optim.__dict__[optim_type](msg_model.parameters(),
                                                **optim_kwargs)

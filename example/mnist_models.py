@@ -66,23 +66,23 @@ def conv() -> proto.LayerModel:
 def res1() -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
     layer_graph.add_layer((1, 28, 28), 2, LayerType.CND, 'i')
-    layer_graph.add_layer((1, 26, 26), 7, LayerType.HID, 'c1')
-    layer_graph.add_layer((1, 24, 24), 17, LayerType.HID, 'c2')
+    layer_graph.add_layer((1, 13, 13), 7, LayerType.HID, 'c1')
+    layer_graph.add_layer((1, 9, 9), 16, LayerType.HID, 'c2')
 
     layer_graph.connect_layers(
-            ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(3, 3),
-            stride=(1, 1))
+            ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(5, 5),
+            stride=(2, 2), doubleoffset=(4, 4))
     layer_graph.connect_layers(
-            ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(3, 3),
-            stride=(1, 1))      
+            ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(5, 5),
+            stride=(1, 1), doubleoffset=(4, 4))      
 
     return layer_graph
 
 def res2() -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
-    layer_graph.add_layer((1, 24, 24), 17, LayerType.CND, 'i')
-    layer_graph.add_layer((1, 22, 22), 17, LayerType.HID, 'c1')
-    layer_graph.add_layer((1, 20, 20), 17, LayerType.HID, 'c2')
+    layer_graph.add_layer((1, 9, 9), 17, LayerType.CND, 'i')
+    layer_graph.add_layer((1, 7, 7), 17, LayerType.HID, 'c1')
+    layer_graph.add_layer((1, 5, 5), 16, LayerType.HID, 'c2')
 
     layer_graph.connect_layers(
             ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(3, 3),
@@ -125,7 +125,7 @@ def res4() -> proto.LayerModel:
 
 def densify() -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
-    layer_graph.add_layer((1, 24, 24), 17, LayerType.CND, 'i')
+    layer_graph.add_layer((1, 5, 5), 17, LayerType.CND, 'i')
     layer_graph.add_layer(10, 11, LayerType.HID, 'd')
     layer_graph.add_layer(1, NB_CLASS, LayerType.HID, 'o')
     layer_graph.connect_layers(['i', 'd'], ConnectionType.DENSE, 'cd')

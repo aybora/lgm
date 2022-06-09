@@ -92,13 +92,15 @@ def get_args():
                              ' --epoch is specified.')
     return parser.parse_args()
 
-def flattened_crop(input):
+def flattened_crop(input, kernel_size=3, stride=3, padding=0):
     if input.ndimension() == 2:
         edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8))
     else:
         edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8), input.size(2))
 
-    cropped = edited.clone()[:,2:-2,2:-2]
+    #cropped = edited.clone()[:,2:-2,2:-2]
+    
+    cropped=nnf.max_pool2d(edited.clone(), kernel_size=kernel_size, stride=stride, padding=padding)
 
     if input.ndimension() == 2:
         reshaped = cropped.reshape(cropped.size(0), cropped.size(1)**2, 1)
@@ -258,9 +260,10 @@ if __name__ == '__main__':
             # self.conv = conv
 
         def forward(self, input):
-            hidden = self.block1(input)[0][:,:,1:]
-            res_out = flattened_crop(input)+hidden
-            # hidden = self.block2(res_out)[0][:,:,1:]
+            hidden = self.block1(input) #[0][:,:,1:]
+            res_out = hidden[0] + flattened_crop(input, kernel_size=3, stride=3)
+            hidden = self.block2(res_out)
+            res_out = hidden[0] + flattened_crop(res_out[0], kernel_size=3, stride=2, padding=1)
             # res_out = flattened_crop(res_out)+hidden
             # hidden = self.block3(res_out)[0][:,:,1:]
             # res_out = flattened_crop(res_out)+hidden

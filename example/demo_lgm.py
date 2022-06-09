@@ -249,26 +249,26 @@ if __name__ == '__main__':
     class ResModel(nn.Module, SavableModel):
         def __init__(self, block1, block2, block3, block4, dense):
             super(ResModel, self).__init__()
-            # self.block1 = block1
-            # self.block2 = block2
-            # self.block3 = block3
-            # self.block4 = block4
-            # self.dense = dense
+            self.block1 = block1
+            self.block2 = block2
+            self.block3 = block3
+            self.block4 = block4
+            self.dense = dense
             # self.relu = nn.ReLU()
-            self.conv = conv
+            # self.conv = conv
 
         def forward(self, input):
-            # hidden = self.block1(input)[0][:,:,1:]
-            # res_out = flattened_crop(input)+hidden
+            hidden = self.block1(input)[0][:,:,1:]
+            res_out = flattened_crop(input)+hidden
             # hidden = self.block2(res_out)[0][:,:,1:]
             # res_out = flattened_crop(res_out)+hidden
             # hidden = self.block3(res_out)[0][:,:,1:]
             # res_out = flattened_crop(res_out)+hidden
             # hidden = self.block4(res_out)[0][:,:,1:]
             # res_out = flattened_crop(res_out)+hidden
-            # o = self.dense(res_out)
-            # return o
-            return self.conv(input)
+            o = self.dense(res_out)
+            return o
+            # return self.conv(input)
 
         def save_model(self, path: str,
                    addons: Optional[Dict[Hashable, Picklable]] = None) -> None:

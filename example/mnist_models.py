@@ -125,7 +125,7 @@ def res4() -> proto.LayerModel:
 
 def densify() -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
-    layer_graph.add_layer((1, 12, 12), 17, LayerType.CND, 'i')
+    layer_graph.add_layer((1, 24, 24), 17, LayerType.CND, 'i')
     layer_graph.add_layer(10, 11, LayerType.HID, 'd')
     layer_graph.add_layer(1, NB_CLASS, LayerType.HID, 'o')
     layer_graph.connect_layers(['i', 'd'], ConnectionType.DENSE, 'cd')

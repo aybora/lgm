@@ -71,10 +71,10 @@ def res1() -> proto.LayerModel:
 
     layer_graph.connect_layers(
             ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(3, 3),
-            stride=(1, 1), doubleoffset=(2, 2))
+            stride=(1, 1))
     layer_graph.connect_layers(
             ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(3, 3),
-            stride=(1, 1), doubleoffset=(2, 2))
+            stride=(1, 1))      
 
     return layer_graph
 
@@ -89,7 +89,7 @@ def res2() -> proto.LayerModel:
             stride=(1, 1), doubleoffset=(2, 2))
     layer_graph.connect_layers(
             ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(3, 3),
-            stride=(1, 1), doubleoffset=(2, 2))
+            stride=(1, 1), doubleoffset=(2, 2))        
 
     return layer_graph
 
@@ -104,7 +104,7 @@ def res3() -> proto.LayerModel:
             stride=(1, 1), doubleoffset=(2, 2))
     layer_graph.connect_layers(
             ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(3, 3),
-            stride=(1, 1), doubleoffset=(2, 2))
+            stride=(1, 1), doubleoffset=(2, 2))       
 
     return layer_graph
 

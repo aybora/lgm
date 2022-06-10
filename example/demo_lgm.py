@@ -119,8 +119,8 @@ def flattened_pad(input, pad = 2):
         edited = edited.permute(0,3,1,2)
 
     channel = edited.clone().cpu().size(1)
-    bn = nn.BatchNorm2d(channel)
-    padding = nn.ZeroPad2d(pad)
+    bn = nn.BatchNorm2d(channel).cuda()
+    padding = nn.ZeroPad2d(pad).cuda()
     padded = padding(bn(edited))
 
     if input.ndimension() == 2:

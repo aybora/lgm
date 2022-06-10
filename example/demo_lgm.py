@@ -118,8 +118,9 @@ def flattened_pad(input, pad = 2):
         edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8), input.size(2))
         edited = edited.permute(0,3,1,2)
 
+    bn = nn.BatchNorm2d(edited.size(1))
     padding = nn.ZeroPad2d(pad)
-    padded = padding(edited)
+    padded = padding(bn(edited))
 
     if input.ndimension() == 2:
         reshaped = padded.reshape(padded.size(0), padded.size(1)**2, 1)

@@ -111,6 +111,24 @@ def flattened_crop(input, kernel_size=3, stride=3, padding=0):
 
     return reshaped
 
+def flattened_pad(input, pad = 2):
+    if input.ndimension() == 2:
+        edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8))
+    else:
+        edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8), input.size(2))
+        edited = edited.permute(0,3,1,2)
+
+    padding = nn.ZeroPad2d(pad)
+    padded = padding(edited)
+
+    if input.ndimension() == 2:
+        reshaped = padded.reshape(padded.size(0), padded.size(1)**2, 1)
+    else:
+        padded = padded.permute(0,2,3,1)
+        reshaped = padded.reshape(padded.size(0), padded.size(1)**2, padded.size(3))
+
+    return reshaped
+
 if __name__ == '__main__':
 
     # global parameters
@@ -214,66 +232,63 @@ if __name__ == '__main__':
     # msg_model.show_summary()
     # display_param_stats(msg_model)
 
-    layer_graph = getattr(mnist_models, 'conv')()
-    conv = msgpass.layerModelWrapper(
-        layer_graph, 'step', 'pro', infer_method, frequency, ('o',))
-    if use_cuda:
-        conv.cuda()
 
-    layer_graph = getattr(mnist_models, 'res1')()
-    block1 = msgpass.layerModelWrapper(
+    layer_graph = getattr(mnist_models, 'res_input')()
+    block_in = msgpass.layerModelWrapper(
         layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
     if use_cuda:
-        block1.cuda()
+        block_in.cuda()
 
-    layer_graph = getattr(mnist_models, 'res2')()
-    block2 = msgpass.layerModelWrapper(
-        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
-    if use_cuda:
-        block2.cuda()
 
-    layer_graph = getattr(mnist_models, 'res3')()
-    block3 = msgpass.layerModelWrapper(
-        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
-    if use_cuda:
-        block3.cuda()
-
-    layer_graph = getattr(mnist_models, 'res4')()
-    block4 = msgpass.layerModelWrapper(
-        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
-    if use_cuda:
-        block4.cuda()            
-
-    layer_graph = getattr(mnist_models, 'densify')()
-    dense = msgpass.layerModelWrapper(
-        layer_graph, 'step', 'pro', infer_method, frequency, ('o',))
-    if use_cuda:
-        dense.cuda()    
-
-    class ResModel(nn.Module, SavableModel):
-        def __init__(self, block1, block2, block3, block4, dense):
-            super(ResModel, self).__init__()
-            self.block1 = block1
-            self.block2 = block2
-            self.block3 = block3
-            self.block4 = block4
-            self.dense = dense
-            self.relu = nn.ReLU()
-            # self.conv = conv
+    class ResBlock(nn.Module):
+        def __init__(self, in_channel, out_channel):
+            super(ResBlock, self).__init__()
+            layer_graph = getattr(mnist_models, 'res_block')(in_channel, out_channel)
+            self.block_res = msgpass.layerModelWrapper(
+                layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))
 
         def forward(self, input):
-            hidden = self.block1(input) #[0][:,:,1:]
-            res_out = self.relu(hidden[0] + flattened_crop(input, kernel_size=3, stride=3))
-            hidden = self.block2(res_out)
-            res_out = self.relu(hidden[0] + flattened_crop(res_out, kernel_size=3, stride=2, padding=1))
-            # res_out = flattened_crop(res_out)+hidden
-            # hidden = self.block3(res_out)[0][:,:,1:]
-            # res_out = flattened_crop(res_out)+hidden
-            # hidden = self.block4(res_out)[0][:,:,1:]
-            # res_out = flattened_crop(res_out)+hidden
-            o = self.dense(res_out)
+            identity = input
+            h = flattened_pad(input, 2)
+            o = self.block_res(h)
+            o = o[0] + identity
             return o
-            # return self.conv(input)
+               
+
+    def make_resnet(in_channel, out_channel, blocks):
+        layers = []
+
+        for _ in range (0,blocks):
+            layers.append(ResBlock(in_channel, out_channel))
+        
+        return nn.Sequential(*layers)
+
+    def make_dense(in_channels):
+        layer_graph = getattr(mnist_models, 'densify')(in_channels)
+        dense = msgpass.layerModelWrapper(
+            layer_graph, 'step', 'pro', infer_method, frequency, ('o',))
+
+        return dense
+       
+
+    class ResModel(nn.Module, SavableModel):
+        def __init__(self, block_in):
+            super(ResModel, self).__init__()
+            self.block_in = block_in
+            self.res1 = make_resnet(16, 16, 4)
+            self.res2 = make_resnet(16, 16, 4)
+            self.res3 = make_resnet(16, 16, 4)
+            self.dense = make_dense(16)
+
+
+        def forward(self, input):
+            hidden = self.block_in(input) 
+            res_out = hidden[0] + flattened_crop(input, kernel_size=3, stride=3)
+            hidden = self.res1(res_out)
+            hidden = self.res2(hidden)
+            hidden = self.res3(hidden)
+            o = self.dense(hidden)
+            return o
 
         def save_model(self, path: str,
                    addons: Optional[Dict[Hashable, Picklable]] = None) -> None:
@@ -298,7 +313,7 @@ if __name__ == '__main__':
 
 
 
-    msg_model = ResModel(block1, block2, block3, block4, dense)
+    msg_model = ResModel(block_in)
 
     if use_cuda:
         msg_model = msg_model.cuda()

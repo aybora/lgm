@@ -64,16 +64,16 @@ def conv() -> proto.LayerModel:
     return layer_graph
 
 def res_input() -> proto.LayerModel:
-    layer_graph = proto.LayerModel('conv')
+    layer_graph = proto.LayerModel('local_mininet')
     layer_graph.add_layer((1, 28, 28), 2, LayerType.CND, 'i')
     layer_graph.add_layer((1, 13, 13), 7, LayerType.HID, 'c1')
     layer_graph.add_layer((1, 9, 9), 16, LayerType.HID, 'c2')
 
     layer_graph.connect_layers(
-            ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(5, 5),
+            ['i', 'c1'], ConnectionType.LOCAL, 'c1', kernel_shape=(5, 5),
             stride=(2, 2), doubleoffset=(4, 4))
     layer_graph.connect_layers(
-            ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(5, 5),
+            ['c1', 'c2'], ConnectionType.LOCAL, 'c2', kernel_shape=(5, 5),
             stride=(1, 1), doubleoffset=(4, 4))      
 
     return layer_graph
@@ -85,16 +85,16 @@ def res_block(in_channel, out_channel) -> proto.LayerModel:
     layer_graph.add_layer((1, 5, 5), out_channel, LayerType.HID, 'c2')
 
     layer_graph.connect_layers(
-            ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(3, 3),
+            ['i', 'c1'], ConnectionType.LOCAL, 'c1', kernel_shape=(3, 3),
             stride=(1, 1), doubleoffset=(2, 2))
     layer_graph.connect_layers(
-            ['c1', 'c2'], ConnectionType.CONV, 'c2', kernel_shape=(3, 3),
+            ['c1', 'c2'], ConnectionType.LOCAL, 'c2', kernel_shape=(3, 3),
             stride=(1, 1), doubleoffset=(2, 2))        
 
     return layer_graph
 
 def densify(channel) -> proto.LayerModel:
-    layer_graph = proto.LayerModel('conv')
+    layer_graph = proto.LayerModel('dense')
     layer_graph.add_layer((1, 5, 5), channel+1, LayerType.CND, 'i')
     layer_graph.add_layer(10, 11, LayerType.HID, 'd')
     layer_graph.add_layer(1, NB_CLASS, LayerType.HID, 'o')

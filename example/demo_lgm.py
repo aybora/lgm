@@ -111,7 +111,7 @@ def flattened_crop(input, kernel_size=3, stride=3, padding=0):
 
     return reshaped
 
-def flattened_pad(input, pad = 2):
+def flattened_pad(input, pad = 2, gpu = False):
     if input.ndimension() == 2:
         edited = input.reshape(input.size(0),np.sqrt(input.size(1)).astype(np.int8),np.sqrt(input.size(1)).astype(np.int8))
     else:
@@ -119,8 +119,12 @@ def flattened_pad(input, pad = 2):
         edited = edited.permute(0,3,1,2)
 
     channel = edited.clone().cpu().size(1)
-    bn = nn.BatchNorm2d(channel).cuda()
-    padding = nn.ZeroPad2d(pad).cuda()
+    bn = nn.BatchNorm2d(channel)
+    padding = nn.ZeroPad2d(pad)
+    if gpu:
+        bn.cuda()
+        padding.cuda()
+
     padded = padding(bn(edited))
 
     if input.ndimension() == 2:
@@ -241,6 +245,10 @@ if __name__ == '__main__':
     if use_cuda:
         block_in.cuda()
 
+    layer_graph = getattr(mnist_models, 'res_block')(16,16)
+    block2 = msgpass.layerModelWrapper(
+        layer_graph, 'step', 'pro', infer_method, frequency, ('c2',))    
+
 
     class ResBlock(nn.Module):
         def __init__(self, in_channel, out_channel):
@@ -251,7 +259,7 @@ if __name__ == '__main__':
 
         def forward(self, input):
             identity = input
-            h = flattened_pad(input, 2)
+            h = flattened_pad(input, 2, use_cuda)
             o = self.block_res(h)
             o = o[0] + identity
             return o
@@ -274,21 +282,24 @@ if __name__ == '__main__':
        
 
     class ResModel(nn.Module, SavableModel):
-        def __init__(self, block_in):
+        def __init__(self, block_in, block2):
             super(ResModel, self).__init__()
             self.block_in = block_in
+            self.block2 = block2
             self.res1 = make_resnet(16, 16, 4)
-            self.res2 = make_resnet(16, 16, 4)
-            self.res3 = make_resnet(16, 16, 4)
+            #self.res2 = make_resnet(16, 16, 4)
+            #self.res3 = make_resnet(16, 16, 4)
             self.dense = make_dense(16)
 
 
         def forward(self, input):
             hidden = self.block_in(input) 
             res_out = hidden[0] + flattened_crop(input, kernel_size=3, stride=3)
+            hidden = self.block2(res_out) 
+            res_out = hidden[0] + flattened_crop(res_out, kernel_size=3, stride=2, padding=1)
             hidden = self.res1(res_out)
-            hidden = self.res2(hidden)
-            hidden = self.res3(hidden)
+            #hidden = self.res2(hidden)
+            #hidden = self.res3(hidden)
             o = self.dense(hidden)
             return o
 
@@ -315,7 +326,7 @@ if __name__ == '__main__':
 
 
 
-    msg_model = ResModel(block_in)
+    msg_model = ResModel(block_in, block2)
 
     if use_cuda:
         msg_model = msg_model.cuda()

@@ -80,9 +80,9 @@ def res_input() -> proto.LayerModel:
 
 def res_block(in_channel, out_channel) -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
-    layer_graph.add_layer((1, 13, 13), in_channel+1, LayerType.CND, 'i')
-    layer_graph.add_layer((1, 11, 11), out_channel+1, LayerType.HID, 'c1')
-    layer_graph.add_layer((1, 9, 9), out_channel, LayerType.HID, 'c2')
+    layer_graph.add_layer((1, 9, 9), in_channel+1, LayerType.CND, 'i')
+    layer_graph.add_layer((1, 7, 7), out_channel+1, LayerType.HID, 'c1')
+    layer_graph.add_layer((1, 5, 5), out_channel, LayerType.HID, 'c2')
 
     layer_graph.connect_layers(
             ['i', 'c1'], ConnectionType.CONV, 'c1', kernel_shape=(3, 3),
@@ -95,7 +95,7 @@ def res_block(in_channel, out_channel) -> proto.LayerModel:
 
 def densify(channel) -> proto.LayerModel:
     layer_graph = proto.LayerModel('conv')
-    layer_graph.add_layer((1, 9, 9), channel+1, LayerType.CND, 'i')
+    layer_graph.add_layer((1, 5, 5), channel+1, LayerType.CND, 'i')
     layer_graph.add_layer(10, 11, LayerType.HID, 'd')
     layer_graph.add_layer(1, NB_CLASS, LayerType.HID, 'o')
     layer_graph.connect_layers(['i', 'd'], ConnectionType.DENSE, 'cd')

@@ -120,12 +120,14 @@ def flattened_pad(input, pad = 2, gpu = False):
 
     channel = edited.clone().cpu().size(1)
     bn = nn.BatchNorm2d(channel)
+    relu = nn.ReLU()
     padding = nn.ZeroPad2d(pad)
     if gpu:
         bn.cuda()
         padding.cuda()
+        relu.cuda()
 
-    padded = padding(bn(edited))
+    padded = padding(relu(bn(edited)))
 
     if input.ndimension() == 2:
         reshaped = padded.reshape(padded.size(0), padded.size(1)**2, 1)
@@ -287,7 +289,7 @@ if __name__ == '__main__':
             super(ResModel, self).__init__()
             self.block_in = block_in
             self.block2 = block2
-            #self.res1 = make_resnet(16, 16, 4)
+            self.res1 = make_resnet(16, 16, 4)
             #self.res2 = make_resnet(16, 16, 4)
             #self.res3 = make_resnet(16, 16, 4)
             self.dense = make_dense(16)
@@ -298,7 +300,7 @@ if __name__ == '__main__':
             res_out = hidden[0] + flattened_crop(input, kernel_size=3, stride=3)
             hidden = self.block2(res_out) 
             res_out = hidden[0] + flattened_crop(res_out, kernel_size=3, stride=2, padding=1)
-            #hidden = self.res1(res_out)
+            hidden = self.res1(res_out)
             #hidden = self.res2(hidden)
             #hidden = self.res3(hidden)
             o = self.dense(res_out)
